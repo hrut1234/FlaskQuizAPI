@@ -87,5 +87,5 @@ Ensure you have the following installed on your machine:
     3. Authentication & Authorization: The API does not include authentication or authorization mechanisms. This should be considered for protecting sensitive endpoints and managing user access.
 
 5. **API Issues:**
-    1. User's score keeps getting increaed for multiple post requests for the same question.
+    1. User's score increases with multiple POST requests for the same question.
     2. Use a unique identifier for each user's answer to a specific question. Store this in a database to track whether an answer has already been submitted.
