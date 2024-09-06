@@ -83,8 +83,8 @@ def create_quiz(title, questions_data):
 def create_question(text, options, correct_option):
     if not isinstance(text, str) or not text.strip():
         raise ValueError("Invalid question text")
-    if not isinstance(options, list) or len(options) < 2:
-        raise ValueError("Options must be a list with at least two options")
+    if not isinstance(options, list) or len(options) < 4:
+        raise ValueError("Options must be a list with at least 4 options")
     if not isinstance(correct_option, int) or correct_option < 0 or correct_option >= len(options):
         raise ValueError("Invalid correct option index")
 
