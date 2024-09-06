@@ -43,16 +43,20 @@ Ensure you have the following installed on your machine:
         3. Request Body:
         ```bash
             {
-            "title": "Quiz Title",
-            "description": "Quiz Description",
-            "questions": [
-                {
-                "question": "What is the capital of France?",
-                "options": ["Paris", "London", "Berlin", "Delhi"],
-                "correct_option": "3"
-                }
-            ]
-            }
+           "title": "quiz 3",
+           "questions": [
+             {
+               "text": "What is the output of print(1 + 1)?",
+               "options": ["1", "2", "11", "None of the above"],
+               "correct_option": 1
+             },
+             {
+               "text": "what is India's Capital?",
+               "options": ["Mumbai", "Delhi", "Ch", "Bl"],
+               "correct_option": 1
+             }
+           ]
+         }
         ```
     2. Get a Quiz
         1. Endpoint: GET /quiz/<string:quiz_id>/
