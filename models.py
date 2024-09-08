@@ -1,10 +1,15 @@
 import uuid
 import hashlib
+from pymongo import MongoClient
 
-# In-memory storage
-quizzes = {}
-questions = {}
-results = {}
+# Initialize MongoDB client
+client = MongoClient("mongodb://mongo:27017/")  # Use the appropriate MongoDB URI
+db = client.quiz_db  # Use or create a database named 'quiz_db'
+
+# Define MongoDB collections
+quizzes_collection = db.quizzes
+questions_collection = db.questions
+results_collection = db.results
 
 def hash_question(text, options):
     """
@@ -54,15 +59,15 @@ def create_quiz(title, questions_data):
     # Generate a hash for the quiz
     quiz_hash = hash_quiz(title, questions_data)
     
-    # Check if the quiz already exists
-    existing_quiz_id = next((qid for qid, qdata in quizzes.items() if qdata.get('hash') == quiz_hash), None)
-    if existing_quiz_id:
-        return existing_quiz_id  # Return existing quiz ID
+    # Check if the quiz already exists in MongoDB
+    existing_quiz = quizzes_collection.find_one({'hash': quiz_hash})
+    if existing_quiz:
+        return existing_quiz['_id']  # Return existing quiz ID
     
     # If the quiz does not exist, create a new one
     quiz_id = str(uuid.uuid4())
-    quizzes[quiz_id] = {
-        'id': quiz_id,
+    quiz_data = {
+        '_id': quiz_id,
         'title': title,
         'questions': [],
         'hash': quiz_hash
@@ -70,14 +75,15 @@ def create_quiz(title, questions_data):
     
     for q in questions_data:
         question_hash = hash_question(q['text'], q['options'])
-        existing_question_id = next((qid for qid, qdata in questions.items() if qdata.get('hash') == question_hash), None)
+        existing_question = questions_collection.find_one({'hash': question_hash})
         
-        if existing_question_id:
-            quizzes[quiz_id]['questions'].append(existing_question_id)
+        if existing_question:
+            quiz_data['questions'].append(existing_question['_id'])
         else:
             question_id = create_question(q['text'], q['options'], q['correct_option'])
-            quizzes[quiz_id]['questions'].append(question_id)
+            quiz_data['questions'].append(question_id)
     
+    quizzes_collection.insert_one(quiz_data)
     return quiz_id
 
 def create_question(text, options, correct_option):
@@ -90,50 +96,52 @@ def create_question(text, options, correct_option):
 
     question_hash = hash_question(text, options)
     
-    existing_question_id = next((qid for qid, qdata in questions.items() if qdata.get('hash') == question_hash), None)
+    existing_question = questions_collection.find_one({'hash': question_hash})
     
-    if existing_question_id:
-        return existing_question_id
+    if existing_question:
+        return existing_question['_id']
 
     question_id = str(uuid.uuid4())
-    questions[question_id] = {
-        'id': question_id,
+    question_data = {
+        '_id': question_id,
         'text': text,
         'options': options,
         'correct_option': correct_option,
         'hash': question_hash
     }
+    questions_collection.insert_one(question_data)
     return question_id
 
-
 def submit_answer(quiz_id, question_id, user_id, selected_option):
-    if quiz_id not in quizzes:
+    if not quizzes_collection.find_one({'_id': quiz_id}):
         return None, "Quiz not found"
-    if question_id not in questions:
+    if not questions_collection.find_one({'_id': question_id}):
         return None, "Question not found"
     if not isinstance(user_id, str) or not user_id.strip():
         return None, "Invalid user ID"
-    if not isinstance(selected_option, int) or selected_option < 0 or selected_option >= len(questions[question_id]['options']):
+    if not isinstance(selected_option, int) or selected_option < 0 or selected_option >= len(questions_collection.find_one({'_id': question_id})['options']):
         return None, "Invalid selected option"
 
-    correct_option = questions[question_id]['correct_option']
+    correct_option = questions_collection.find_one({'_id': question_id})['correct_option']
     is_correct = (selected_option == correct_option)
     
-    if quiz_id not in results:
-        results[quiz_id] = {}
-    if user_id not in results[quiz_id]:
-        results[quiz_id][user_id] = {
+    user_result = results_collection.find_one({'quiz_id': quiz_id, 'user_id': user_id})
+    if not user_result:
+        user_result = {
+            'quiz_id': quiz_id,
+            'user_id': user_id,
             'score': 0,
             'answers': []
         }
 
-    results[quiz_id][user_id]['answers'].append({
+    user_result['answers'].append({
         'question_id': question_id,
         'selected_option': selected_option,
         'is_correct': is_correct
     })
 
     if is_correct:
-        results[quiz_id][user_id]['score'] += 1
+        user_result['score'] += 1
 
+    results_collection.replace_one({'quiz_id': quiz_id, 'user_id': user_id}, user_result, upsert=True)
     return is_correct, correct_option if not is_correct else None
