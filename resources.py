@@ -1,5 +1,8 @@
 from flask_restful import Resource, reqparse
-from models import quizzes_collection, questions_collection, results_collection, create_quiz, submit_answer
+from models import (
+    quizzes_collection, questions_collection, results_collection,
+    create_quiz, submit_answer, get_user_scores
+)
 
 # Parser for creating a new quiz
 quiz_parser = reqparse.RequestParser()
@@ -10,10 +13,11 @@ quiz_parser.add_argument('questions', type=list, location='json', required=True,
 answer_parser = reqparse.RequestParser()
 answer_parser.add_argument('selected_option', type=int, required=True, help="Selected option is required")
 
-class CreateQuiz(Resource):
-    def __init__(self, **kwargs):
-        self.db = kwargs['db']
+# Parser for saving user progress
+progress_parser = reqparse.RequestParser()
+progress_parser.add_argument('selected_option', type=int, required=True, help="Selected option is required")
 
+class CreateQuiz(Resource):
     def post(self):
         """
         Endpoint to create a new quiz.
@@ -28,9 +32,6 @@ class CreateQuiz(Resource):
             return {'message': 'An unexpected error occurred: ' + str(e)}, 500
 
 class GetQuiz(Resource):
-    def __init__(self, **kwargs):
-        self.db = kwargs['db']
-
     def get(self, quiz_id):
         """
         Endpoint to fetch a quiz by its ID.
@@ -38,25 +39,17 @@ class GetQuiz(Resource):
         quiz = quizzes_collection.find_one({'_id': quiz_id})
         if not quiz:
             return {'message': 'Quiz not found'}, 404
-
-        quiz_data = {
-            'id': quiz['_id'],
-            'title': quiz['title'],
-            'questions': [
-                {
-                    'id': q_id,
-                    'text': questions_collection.find_one({'_id': q_id})['text'],
-                    'options': questions_collection.find_one({'_id': q_id})['options']
-                }
-                for q_id in quiz['questions']
-            ]
-        }
-        return quiz_data, 200
+        questions = [
+            {
+                'id': q_id,
+                'text': questions_collection.find_one({'_id': q_id})['text'],
+                'options': questions_collection.find_one({'_id': q_id})['options']
+            }
+            for q_id in quiz.get('questions', [])
+        ]
+        return {'id': quiz['_id'], 'title': quiz['title'], 'questions': questions}, 200
 
 class SubmitAnswer(Resource):
-    def __init__(self, **kwargs):
-        self.db = kwargs['db']
-
     def post(self, quiz_id, question_id):
         """
         Endpoint to submit an answer for a specific question in a quiz.
@@ -77,14 +70,12 @@ class SubmitAnswer(Resource):
             return {'message': 'An unexpected error occurred: ' + str(e)}, 500
 
 class GetResults(Resource):
-    def __init__(self, **kwargs):
-        self.db = kwargs['db']
-
     def get(self, quiz_id, user_id):
         """
         Endpoint to get the user's results for a specific quiz.
         """
         user_result = results_collection.find_one({'quiz_id': quiz_id, 'user_id': user_id})
+        
         if not user_result:
             return {'message': 'Results not found'}, 404
 
@@ -95,13 +86,21 @@ class GetResults(Resource):
             'answers': user_result['answers']
         }, 200
 
-class ListQuizzes(Resource):
-    def __init__(self, **kwargs):
-        self.db = kwargs['db']
+class GetUserScores(Resource):
+    def get(self, user_id):
+        """
+        Endpoint to fetch historical scores for a specific user.
+        """
+        try:
+            scores = get_user_scores(user_id)
+            return {'user_id': user_id, 'scores': scores}, 200
+        except Exception as e:
+            return {'message': 'An unexpected error occurred: ' + str(e)}, 500
 
+class ListQuizzes(Resource):
     def get(self):
         """
         Endpoint to list all quiz IDs.
         """
-        quiz_ids = [quiz['_id'] for quiz in quizzes_collection.find()]
-        return {'quiz_ids': quiz_ids}, 200
+        quiz_ids = list(quizzes_collection.find({}, {'_id': 1}))
+        return {'quiz_ids': [quiz['_id'] for quiz in quiz_ids]}, 200

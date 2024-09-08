@@ -87,6 +87,17 @@ def create_quiz(title, questions_data):
     return quiz_id
 
 def create_question(text, options, correct_option):
+    """
+    Creates a new question or checks if a question already exists based on its text and options.
+
+    Args:
+    - text (str): The text of the question.
+    - options (list): A list of answer options.
+    - correct_option (int): The index of the correct answer.
+
+    Returns:
+    - question_id (str): The unique identifier for the created or existing question.
+    """
     if not isinstance(text, str) or not text.strip():
         raise ValueError("Invalid question text")
     if not isinstance(options, list) or len(options) < 4:
@@ -113,6 +124,19 @@ def create_question(text, options, correct_option):
     return question_id
 
 def submit_answer(quiz_id, question_id, user_id, selected_option):
+    """
+    Submits an answer for a specific question in a quiz and updates user results.
+
+    Args:
+    - quiz_id (str): The ID of the quiz.
+    - question_id (str): The ID of the question.
+    - user_id (str): The ID of the user.
+    - selected_option (int): The selected option index.
+
+    Returns:
+    - is_correct (bool): Whether the selected answer is correct.
+    - correct_option (int|None): The correct option index if the answer was incorrect; None otherwise.
+    """
     if not quizzes_collection.find_one({'_id': quiz_id}):
         return None, "Quiz not found"
     if not questions_collection.find_one({'_id': question_id}):
@@ -134,6 +158,10 @@ def submit_answer(quiz_id, question_id, user_id, selected_option):
             'answers': []
         }
 
+    # Check if the answer has already been submitted
+    if any(answer['question_id'] == question_id for answer in user_result['answers']):
+        return None, "Answer already submitted"
+
     user_result['answers'].append({
         'question_id': question_id,
         'selected_option': selected_option,
@@ -145,3 +173,49 @@ def submit_answer(quiz_id, question_id, user_id, selected_option):
 
     results_collection.replace_one({'quiz_id': quiz_id, 'user_id': user_id}, user_result, upsert=True)
     return is_correct, correct_option if not is_correct else None
+
+def get_user_progress(quiz_id, user_id):
+    """
+    Fetches the progress of a user for a specific quiz.
+
+    Args:
+    - quiz_id (str): The ID of the quiz.
+    - user_id (str): The ID of the user.
+
+    Returns:
+    - progress (dict): User's progress including score and answers.
+    """
+    user_result = results_collection.find_one({'quiz_id': quiz_id, 'user_id': user_id})
+    if user_result:
+        return {
+            'quiz_id': quiz_id,
+            'user_id': user_id,
+            'score': user_result.get('score', 0),
+            'answers': user_result.get('answers', [])
+        }
+    else:
+        return {
+            'quiz_id': quiz_id,
+            'user_id': user_id,
+            'score': 0,
+            'answers': []
+        }
+
+def get_user_scores(user_id):
+    """
+    Fetches all historical scores for a user.
+
+    Args:
+    - user_id (str): The ID of the user.
+
+    Returns:
+    - scores (list): List of scores for each quiz.
+    """
+    user_results = results_collection.find({'user_id': user_id})
+    scores = []
+    for result in user_results:
+        scores.append({
+            'quiz_id': result['quiz_id'],
+            'score': result.get('score', 0)
+        })
+    return scores
