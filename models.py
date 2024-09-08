@@ -174,33 +174,6 @@ def submit_answer(quiz_id, question_id, user_id, selected_option):
     results_collection.replace_one({'quiz_id': quiz_id, 'user_id': user_id}, user_result, upsert=True)
     return is_correct, correct_option if not is_correct else None
 
-def get_user_progress(quiz_id, user_id):
-    """
-    Fetches the progress of a user for a specific quiz.
-
-    Args:
-    - quiz_id (str): The ID of the quiz.
-    - user_id (str): The ID of the user.
-
-    Returns:
-    - progress (dict): User's progress including score and answers.
-    """
-    user_result = results_collection.find_one({'quiz_id': quiz_id, 'user_id': user_id})
-    if user_result:
-        return {
-            'quiz_id': quiz_id,
-            'user_id': user_id,
-            'score': user_result.get('score', 0),
-            'answers': user_result.get('answers', [])
-        }
-    else:
-        return {
-            'quiz_id': quiz_id,
-            'user_id': user_id,
-            'score': 0,
-            'answers': []
-        }
-
 def get_user_scores(user_id):
     """
     Fetches all historical scores for a user.
