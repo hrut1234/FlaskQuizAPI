@@ -34,6 +34,7 @@ Ensure you have the following installed on your machine:
     3. Submit an Answer: POST http://localhost:5000/quiz/<quiz_id>/question/<question_id>/answer/
     4. Get Results: GET http://localhost:5000/quiz/<quiz_id>/result/<user_id>/
     5. List All Quizzes: GET http://localhost:5000/quizzes/
+    6. Fetch historical score of user: GET http://localhost:5000/user/<string:user_id>/scores/
   
 
 4. **API Endpoints:**
@@ -84,12 +85,20 @@ Ensure you have the following installed on your machine:
     5. List All Quizzes
         1. Endpoint: GET /quizzes/
         2. Description: Retrieves a list of all available quizzes.
+    6. Fetch historical score of user
+        1. Endpoint: GET /user/<string:user_id>/scores/
+        2. Description: Retrieves historical scores of the user for all quizzes
+        3. URL Parameters:
+            1. user_id (string): The ID of the user.
 
 4. **API Limitations:**
-    1. Data Persistence: Currently, the API does not include a persistent storage solution. Data will be lost when the application is restarted or stopped.
-    2. Input Validation: Basic input validation is implemented. However, additional validation and error handling may be required to ensure data integrity and security.
-    3. Authentication & Authorization: The API does not include authentication or authorization mechanisms. This should be considered for protecting sensitive endpoints and managing user access.
+    1. Input Validation: Basic input validation is implemented. However, additional validation and error handling may be required to ensure data integrity and security.
+    2. Authentication & Authorization: The API does not include authentication or authorization mechanisms. This should be considered for protecting sensitive endpoints and managing user access.
+    3. Rate Limiting:  Need to implement rate limiting to prevent abuse of the API endpoints.
+    4. Logging: Need to add logging to capture useful information for debugging and monitoring.
+    5. Performance Improvements: Need to implement Caching, Asynchronous Tasks, Database Optimization/Indexing.
 
 5. **API Issues:**
-    1. User's score increases with multiple POST requests for the same question.
-    2. Use a unique identifier for each user's answer to a specific question. Store this in a database to track whether an answer has already been submitted.
+    1. No logging and Monitoring implemented
+    2. Scalability and concurrency issues due to single DB instance and No user session management
+    3. Not highly available/reliable and have single point of Failure on DB and Flask server
