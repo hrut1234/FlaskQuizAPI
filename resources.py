@@ -93,6 +93,8 @@ class GetUserScores(Resource):
         """
         try:
             scores = get_user_scores(user_id)
+            if not scores:
+                return {'msg': 'user not found'}, 404
             return {'user_id': user_id, 'scores': scores}, 200
         except Exception as e:
             return {'message': 'An unexpected error occurred: ' + str(e)}, 500
